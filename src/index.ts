@@ -100,13 +100,13 @@ export default {
     if (url.pathname === "/api/projects" && request.method === "GET") {
       try {
         const { results } = await env.DB.prepare(
-          "SELECT id, name, location, duration, loop_score, loop_grade, file_path, created_at, updated_at FROM projects ORDER BY updated_at DESC LIMIT 100"
+          "SELECT id, name, location, duration, loop_score, loop_grade, file_path, thumb_url, loop_ready, status, created_at, updated_at FROM projects ORDER BY updated_at DESC LIMIT 100"
         ).all();
         return json({ projects: results || [] });
       } catch (e) {
         // Projects table may not exist yet or migration hasn't run
         // Return empty array to show "No projects yet" message
-        return json({ projects: [], note: "Projects table not yet available. Upload videos via localhost:5000 to populate." });
+        return json({ projects: [], note: "Projects table not yet available. Sync projects from Flask app to populate." });
       }
     }
 
@@ -129,6 +129,46 @@ export default {
         return json({ project: result });
       } catch (e) {
         return json({ error: "Failed to update project" }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/sync-projects" && request.method === "POST") {
+      const body = await request.json<{ projects: unknown[] }>();
+      const projects = body.projects || [];
+
+      try {
+        for (const p of projects) {
+          const proj = p as Record<string, unknown>;
+          const projId = String(proj.id || "unknown");
+          const candidates = (proj.candidates as unknown[])?.length || 0;
+          const loopReady = candidates > 0 ? 1 : 0;
+          const filename = String(proj.filename || "");
+          const thumb = String(proj.thumb || "");
+          const info = proj.info as Record<string, unknown> || {};
+          const duration = Number(info.duration) || 0;
+
+          let location = "";
+          if (typeof proj.location === "string") {
+            location = proj.location;
+          } else if (proj.location && typeof proj.location === "object") {
+            const loc = proj.location as Record<string, unknown>;
+            location = String((loc.name as string) || (loc.id as string) || "");
+          }
+          if (!location && typeof info.location === "string") {
+            location = info.location;
+          }
+
+          const status = String(proj.status || "pending");
+
+          await env.DB.prepare(
+            "INSERT OR REPLACE INTO projects (id, name, location, duration, loop_score, loop_grade, file_path, thumb_url, loop_ready, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))"
+          )
+            .bind(projId, filename, location, duration, 0, "", filename, thumb, loopReady, status)
+            .run();
+        }
+        return json({ synced: projects.length });
+      } catch (e) {
+        return json({ error: "Failed to sync projects", details: String(e) }, 500);
       }
     }
 

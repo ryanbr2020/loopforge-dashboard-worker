@@ -393,26 +393,27 @@ async function loadLibrary() {
     for (const proj of projects) {
       const card = document.createElement('div');
       card.className = 'video-card';
-      const loopScore = proj.loop_score ? (proj.loop_score * 100).toFixed(0) + '%' : 'Pending';
-      const loopGrade = proj.loop_grade || '—';
-      const thumbPath = proj.file_path ? '/thumbs/' + proj.file_path + '.jpg' : '';
-      const thumbStyle = thumbPath ? 'style="background-image: url(' + thumbPath + '); background-size: cover; background-position: center;"' : '';
+      const thumbUrl = proj.thumb_url || '';
+      const thumbStyle = thumbUrl ? 'style="background-image: url(' + escapeHtml(thumbUrl) + '); background-size: cover; background-position: center;"' : '';
+      const loopReady = proj.loop_ready ? '✅ Ready' : '⏳ Pending';
+      const loopReadyClass = proj.loop_ready ? 'style="background: rgba(16,185,129,0.15); color: #10b981;"' : 'style="background: rgba(249,115,22,0.15); color: #f97316;"';
+
       card.innerHTML =
-        '<div class="video-thumb" ' + thumbStyle + '>' + (thumbPath ? '' : '🎬') + '</div>' +
+        '<div class="video-thumb" ' + thumbStyle + '>' + (thumbUrl ? '' : '🎬') + '</div>' +
         '<div class="video-info">' +
         '<div class="video-title" title="' + escapeHtml(proj.name || 'Untitled') + '">' + escapeHtml(proj.name || 'Untitled') + '</div>' +
+        '<div style="font-size:0.75em; font-weight:700; padding:3px 8px; border-radius:4px; margin:6px 0;" ' + loopReadyClass + '>' + loopReady + '</div>' +
         '<div class="video-meta">' +
         (proj.duration ? '<div>Duration: ' + proj.duration + ' min</div>' : '') +
         (proj.location ? '<div>Location: ' + escapeHtml(proj.location) + '</div>' : '') +
         '<div>' + (proj.created_at ? new Date(proj.created_at).toLocaleDateString() : 'Date unknown') + '</div>' +
         '</div>' +
-        '<div class="video-badge">Loop: ' + loopScore + ' (' + loopGrade + ')</div>' +
         '<button class="edit-btn" data-id="' + proj.id + '">✏️ Edit</button>' +
         '</div>';
       grid.appendChild(card);
     }
   } catch (e) {
-    grid.innerHTML = '<div class="library-status" style="color:#f87171;">Failed to load library. Ensure Flask app is running at localhost:5000</div>';
+    grid.innerHTML = '<div class="library-status" style="color:#f87171;">Failed to load library. Make sure projects have been synced from Flask app.</div>';
   }
 }
 
