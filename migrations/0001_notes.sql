@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  created_at TEXT NOT NULL
+);

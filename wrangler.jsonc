@@ -1,0 +1,20 @@
+{
+  "name": "loopforge-dashboard",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-01",
+  "account_id": "0d68502c6156c345d67c493346e07c9a",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "loopforge-dashboard",
+      "database_id": "4b19745f-16ed-44aa-85c9-e8b2a9d51a27"
+    }
+  ],
+  "routes": [
+    { "pattern": "loopforge.boulderconsultant.com/*", "zone_name": "boulderconsultant.com" }
+  ]
+}
