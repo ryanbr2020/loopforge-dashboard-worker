@@ -169,9 +169,34 @@
 
   <section id="panel-library" hidden>
     <div class="card">
-      <h2>📹 Video Library (Read-Only Review)</h2>
-      <p style="color:#9fb0c0;font-size:0.85em;">Browse projects and video thumbnails. To upload/process videos, use the full platform at <strong>localhost:5000</strong> on your home computer.</p>
-      <div id="libraryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:20px;"></div>
+      <h2>📹 Video Library — Organize & Prepare</h2>
+      <p style="color:#9fb0c0;font-size:0.85em;">Search 19,372+ clips. Tag, rate, add notes, mark ready for export. No processing here.</p>
+      <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;margin-top:16px;">
+        <div style="background:#0a0f16;border:1px solid #263241;border-radius:8px;padding:12px;font-size:0.85em;">
+          <div style="font-size:0.75em;font-weight:700;color:#9fb0c0;text-transform:uppercase;margin-bottom:12px;">Filters</div>
+          <input type="text" id="libSearchInput" placeholder="Search clips..." style="width:100%;padding:6px;background:#1c2733;color:#e6edf3;border:1px solid #2c3a48;border-radius:6px;margin-bottom:8px;font-size:0.85em;">
+          <label style="display:block;font-size:0.75em;color:#cbd8e3;margin:8px 0 4px;">Region</label>
+          <select id="libRegionFilter" style="width:100%;padding:6px;background:#1c2733;color:#e6edf3;border:1px solid #2c3a48;border-radius:6px;font-size:0.85em;margin-bottom:8px;">
+            <option value="">All</option>
+            <option value="Colorado">Colorado</option>
+            <option value="Utah">Utah</option>
+            <option value="no_gps">No GPS</option>
+          </select>
+          <label style="display:block;font-size:0.75em;color:#cbd8e3;margin:8px 0 4px;">Camera</label>
+          <select id="libCameraFilter" style="width:100%;padding:6px;background:#1c2733;color:#e6edf3;border:1px solid #2c3a48;border-radius:6px;font-size:0.85em;">
+            <option value="">All</option>
+            <option value="gopro">GoPro</option>
+            <option value="dji_drone">DJI Drone</option>
+          </select>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span id="libResultCount" style="color:#9fb0c0;font-size:0.9em;"></span>
+          </div>
+          <div id="libraryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;"></div>
+          <div id="libPagination" style="display:flex;gap:8px;justify-content:center;margin-top:16px;"></div>
+        </div>
+      </div>
     </div>
   </section>
 

@@ -172,6 +172,47 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/browse" && request.method === "GET") {
+      const queryString = url.search;
+      const flaskUrl = `http://localhost:5000/api/browse${queryString}`;
+      try {
+        const flaskRes = await fetch(flaskUrl, { timeout: 30000 });
+        if (!flaskRes.ok) {
+          return json({
+            error: "Flask app not accessible",
+            message: "Make sure Flask app is running on localhost:5000",
+            details: `Status: ${flaskRes.status}`
+          }, 503);
+        }
+        const data = await flaskRes.json();
+        return json(data);
+      } catch (e) {
+        return json({
+          error: "Cannot reach Flask app",
+          message: "Make sure Flask app is running: python app.py",
+          details: String(e)
+        }, 503);
+      }
+    }
+
+    if (url.pathname.startsWith("/api/browse/thumb/") && request.method === "GET") {
+      const filename = url.pathname.split("/").pop();
+      const flaskUrl = `http://localhost:5000/api/browse/thumb/${filename}`;
+      try {
+        const flaskRes = await fetch(flaskUrl);
+        if (!flaskRes.ok) return json({ error: "Thumbnail not found" }, 404);
+        const buffer = await flaskRes.arrayBuffer();
+        return new Response(buffer, {
+          headers: {
+            'Content-Type': 'image/jpeg',
+            'Cache-Control': 'public, max-age=2592000'
+          }
+        });
+      } catch (e) {
+        return json({ error: "Thumbnail endpoint unavailable" }, 503);
+      }
+    }
+
     if (url.pathname === "/health") {
       return json({ status: "ok" });
     }
