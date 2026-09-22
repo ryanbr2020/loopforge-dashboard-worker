@@ -61,6 +61,31 @@
   .doc-body h1, .doc-body h2, .doc-body h3 { color: #eaf2f8; }
   .doc-body table { display: block; overflow-x: auto; }
   .doc-body code { background: #0f1720; padding: 2px 5px; border-radius: 4px; }
+  .video-card {
+    background: #1c2733; border: 1px solid #2c3a48; border-radius: 10px;
+    overflow: hidden; cursor: pointer; transition: all 0.2s;
+  }
+  .video-card:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.15); }
+  .video-thumb {
+    width: 100%; height: 160px; background: #0f1720; display: flex;
+    align-items: center; justify-content: center; color: #64748b; font-size: 3em;
+  }
+  .video-info {
+    padding: 12px; font-size: 0.9em;
+  }
+  .video-title {
+    font-weight: 600; color: #e6edf3; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .video-meta {
+    font-size: 0.8em; color: #7f93a6; line-height: 1.4;
+  }
+  .video-badge {
+    display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75em;
+    font-weight: 600; margin-top: 6px; background: rgba(14,165,233,0.15); color: #60a5fa;
+  }
+  .library-status {
+    text-align: center; padding: 40px 20px; color: #7f93a6;
+  }
 </style>
 </head>
 <body>
@@ -72,6 +97,7 @@
 
 <nav id="tabs">
   <button data-tab="overview" class="active">Overview</button>
+  <button data-tab="library">📹 Video Library</button>
   <button data-tab="plans">Shoot Plans</button>
   <button data-tab="doc:FOOTAGE_INVENTORY.md">Footage Inventory</button>
   <button data-tab="doc:COLORADO_WATERFALL_GAP_ANALYSIS.md">Waterfall Gaps</button>
@@ -112,6 +138,14 @@
         </tbody>
       </table>
       <p style="color:#9fb0c0;font-size:0.85em;">Full detail in the tabs above (loaded live from repo docs). Heavy video processing (upload / analyze / export) stays on the local Flask app — this dashboard is read/research only.</p>
+    </div>
+  </section>
+
+  <section id="panel-library" hidden>
+    <div class="card">
+      <h2>📹 Video Library (Read-Only Review)</h2>
+      <p style="color:#9fb0c0;font-size:0.85em;">Browse projects and video thumbnails. To upload/process videos, use the full platform at <strong>localhost:5000</strong> on your home computer.</p>
+      <div id="libraryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:20px;"></div>
     </div>
   </section>
 
@@ -158,6 +192,7 @@
 <script>
 const tabsEl = document.getElementById('tabs');
 const panelOverview = document.getElementById('panel-overview');
+const panelLibrary = document.getElementById('panel-library');
 const panelDoc = document.getElementById('panel-doc');
 const panelPlans = document.getElementById('panel-plans');
 const panelNotes = document.getElementById('panel-notes');
@@ -165,6 +200,7 @@ const docBody = document.getElementById('docBody');
 
 function showPanel(name) {
   panelOverview.hidden = name !== 'overview';
+  panelLibrary.hidden = name !== 'library';
   panelDoc.hidden = !name.startsWith('doc:');
   panelPlans.hidden = name !== 'plans';
   panelNotes.hidden = name !== 'notes';
@@ -189,6 +225,7 @@ tabsEl.addEventListener('click', (e) => {
   const tab = btn.dataset.tab;
   showPanel(tab);
   if (tab.startsWith('doc:')) loadDoc(tab.slice(4));
+  if (tab === 'library') loadLibrary();
   if (tab === 'plans') loadPlans();
   if (tab === 'notes') loadNotes();
 });
@@ -300,6 +337,41 @@ document.getElementById('addNote').addEventListener('click', async () => {
   document.getElementById('noteText').value = '';
   loadNotes();
 });
+
+async function loadLibrary() {
+  const grid = document.getElementById('libraryGrid');
+  grid.innerHTML = '<div class="library-status">Loading library...</div>';
+  try {
+    const res = await fetch('/api/projects');
+    if (!res.ok) throw new Error('Failed to load projects');
+    const { projects = [] } = await res.json();
+    if (!projects.length) {
+      grid.innerHTML = '<div class="library-status">📹 No projects yet. Upload videos at <strong>localhost:5000</strong></div>';
+      return;
+    }
+    grid.innerHTML = '';
+    for (const proj of projects) {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      const loopScore = proj.loopScore ? (proj.loopScore * 100).toFixed(0) + '%' : 'Pending';
+      const loopGrade = proj.loopGrade || '—';
+      card.innerHTML =
+        '<div class="video-thumb">🎬</div>' +
+        '<div class="video-info">' +
+        '<div class="video-title" title="' + escapeHtml(proj.name || 'Untitled') + '">' + escapeHtml(proj.name || 'Untitled') + '</div>' +
+        '<div class="video-meta">' +
+        (proj.duration ? '<div>Duration: ' + proj.duration + ' min</div>' : '') +
+        (proj.location ? '<div>Location: ' + escapeHtml(proj.location) + '</div>' : '') +
+        '<div>' + (proj.createdAt ? new Date(proj.createdAt).toLocaleDateString() : 'Date unknown') + '</div>' +
+        '</div>' +
+        '<div class="video-badge">Loop: ' + loopScore + ' (' + loopGrade + ')</div>' +
+        '</div>';
+      grid.appendChild(card);
+    }
+  } catch (e) {
+    grid.innerHTML = '<div class="library-status" style="color:#f87171;">Failed to load library. Ensure Flask app is running at localhost:5000</div>';
+  }
+}
 </script>
 </body>
 </html>

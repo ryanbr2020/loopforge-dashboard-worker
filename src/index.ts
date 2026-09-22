@@ -97,20 +97,28 @@ export default {
       return json({ plan: result });
     }
 
+    if (url.pathname === "/api/projects" && request.method === "GET") {
+      const { results } = await env.DB.prepare(
+        "SELECT id, name, location, duration, loop_score, loop_grade, file_path, created_at, updated_at FROM projects ORDER BY updated_at DESC LIMIT 100"
+      ).all();
+      return json({ projects: results || [] });
+    }
+
     if (url.pathname === "/health") {
       return json({ status: "ok" });
     }
 
     // Serve static assets (dashboard UI, docs, etc.)
-    // Worker handles ONLY dashboard routes:
+    // Worker handles ONLY dashboard routes (READ-ONLY for research):
     // - / → research/planning dashboard
     // - /api/plans/* → shoot planning
     // - /api/notes/* → research notes
+    // - /api/projects → video library (read-only, no upload/processing)
     // - /docs/* → documentation
-    // All other /api/* routes (upload, export, analyze) are handled by the
-    // Flask app running on the local machine (accessed via Cloudflare tunnel).
-    // To use the Flask app, connect to localhost:5000 directly, or route through
-    // the tunnel by visiting loopforge.boulderconsultant.com in the same network.
+    //
+    // All PROCESSING routes (upload, export, analyze) are on the
+    // Flask app running on the local machine (localhost:5000 only).
+    // This dashboard is strictly for review and research, not processing.
     return env.ASSETS.fetch(request);
   },
 };
