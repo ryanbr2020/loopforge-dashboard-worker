@@ -101,48 +101,16 @@ export default {
       return json({ status: "ok" });
     }
 
-    // For dashboard routes (/), serve static assets
-    if (url.pathname === "/" || url.pathname === "/index.html") {
-      return env.ASSETS.fetch(request);
-    }
-
-    // For /docs, serve documentation files
-    if (url.pathname.startsWith("/docs/")) {
-      return env.ASSETS.fetch(request);
-    }
-
-    // For /static, serve static files
-    if (url.pathname.startsWith("/static/")) {
-      return env.ASSETS.fetch(request);
-    }
-
-    // Proxy all other /api/* requests to the local Flask app running on localhost:5000
-    // The Flask app handles video upload, processing, analysis, export, etc.
-    if (url.pathname.startsWith("/api/")) {
-      try {
-        const flaskUrl = new URL(request.url);
-        flaskUrl.hostname = "localhost";
-        flaskUrl.port = "5000";
-        flaskUrl.protocol = "http:";
-
-        // Forward the request to Flask, preserving method, headers, and body
-        const flaskRequest = new Request(flaskUrl.toString(), {
-          method: request.method,
-          headers: request.headers,
-          body: request.body,
-        });
-
-        const flaskResponse = await fetch(flaskRequest);
-        return flaskResponse;
-      } catch (e) {
-        return json(
-          { error: "Flask backend unavailable", details: (e as Error).message },
-          503
-        );
-      }
-    }
-
-    // Fallback: serve static assets
+    // Serve static assets (dashboard UI, docs, etc.)
+    // Worker handles ONLY dashboard routes:
+    // - / → research/planning dashboard
+    // - /api/plans/* → shoot planning
+    // - /api/notes/* → research notes
+    // - /docs/* → documentation
+    // All other /api/* routes (upload, export, analyze) are handled by the
+    // Flask app running on the local machine (accessed via Cloudflare tunnel).
+    // To use the Flask app, connect to localhost:5000 directly, or route through
+    // the tunnel by visiting loopforge.boulderconsultant.com in the same network.
     return env.ASSETS.fetch(request);
   },
 };
