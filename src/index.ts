@@ -110,6 +110,28 @@ export default {
       }
     }
 
+    if (url.pathname.startsWith("/api/projects/") && request.method === "PUT") {
+      const id = url.pathname.split("/").pop();
+      const body = await request.json<{ name?: string; location?: string; duration?: number }>();
+      const name = (body.name || "").trim().slice(0, 200);
+      const location = (body.location || "").trim().slice(0, 200);
+      const duration = typeof body.duration === "number" ? body.duration : null;
+
+      if (!name) return json({ error: "name is required" }, 400);
+
+      const now = new Date().toISOString();
+      try {
+        const result = await env.DB.prepare(
+          "UPDATE projects SET name = ?, location = ?, duration = ?, updated_at = ? WHERE id = ? RETURNING id, name, location, duration, loop_score, loop_grade, file_path, created_at, updated_at"
+        )
+          .bind(name, location || null, duration, now, id)
+          .first();
+        return json({ project: result });
+      } catch (e) {
+        return json({ error: "Failed to update project" }, 500);
+      }
+    }
+
     if (url.pathname === "/health") {
       return json({ status: "ok" });
     }

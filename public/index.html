@@ -86,6 +86,32 @@
   .library-status {
     text-align: center; padding: 40px 20px; color: #7f93a6;
   }
+  .modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal.active { display: flex; }
+  .modal-content {
+    background: #161f2a; border: 1px solid #263241; border-radius: 12px;
+    padding: 24px; max-width: 400px; width: 90%;
+  }
+  .modal-content h3 { margin-top: 0; color: #e6edf3; }
+  .modal-content input { margin-bottom: 12px; }
+  .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-buttons button {
+    flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;
+  }
+  .modal-buttons .save {
+    background: #22c55e; color: #06210f;
+  }
+  .modal-buttons .cancel {
+    background: #374151; color: #e6edf3;
+  }
+  .edit-btn {
+    background: transparent; border: none; color: #60a5fa; cursor: pointer;
+    font-size: 0.85em; padding: 4px 8px; margin-top: 8px; width: 100%;
+  }
+  .edit-btn:hover { color: #3b82f6; }
 </style>
 </head>
 <body>
@@ -188,6 +214,20 @@
     </div>
   </section>
 </main>
+
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h3>Edit Project</h3>
+    <input id="editProjectId" type="hidden">
+    <input id="editName" type="text" placeholder="Project name" maxlength="200">
+    <input id="editLocation" type="text" placeholder="Location" maxlength="200">
+    <input id="editDuration" type="number" placeholder="Duration (minutes)" min="0">
+    <div class="modal-buttons">
+      <button class="save" id="saveEditBtn">Save</button>
+      <button class="cancel" id="cancelEditBtn">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const tabsEl = document.getElementById('tabs');
@@ -353,18 +393,21 @@ async function loadLibrary() {
     for (const proj of projects) {
       const card = document.createElement('div');
       card.className = 'video-card';
-      const loopScore = proj.loopScore ? (proj.loopScore * 100).toFixed(0) + '%' : 'Pending';
-      const loopGrade = proj.loopGrade || '—';
+      const loopScore = proj.loop_score ? (proj.loop_score * 100).toFixed(0) + '%' : 'Pending';
+      const loopGrade = proj.loop_grade || '—';
+      const thumbPath = proj.file_path ? '/thumbs/' + proj.file_path + '.jpg' : '';
+      const thumbStyle = thumbPath ? 'style="background-image: url(' + thumbPath + '); background-size: cover; background-position: center;"' : '';
       card.innerHTML =
-        '<div class="video-thumb">🎬</div>' +
+        '<div class="video-thumb" ' + thumbStyle + '>' + (thumbPath ? '' : '🎬') + '</div>' +
         '<div class="video-info">' +
         '<div class="video-title" title="' + escapeHtml(proj.name || 'Untitled') + '">' + escapeHtml(proj.name || 'Untitled') + '</div>' +
         '<div class="video-meta">' +
         (proj.duration ? '<div>Duration: ' + proj.duration + ' min</div>' : '') +
         (proj.location ? '<div>Location: ' + escapeHtml(proj.location) + '</div>' : '') +
-        '<div>' + (proj.createdAt ? new Date(proj.createdAt).toLocaleDateString() : 'Date unknown') + '</div>' +
+        '<div>' + (proj.created_at ? new Date(proj.created_at).toLocaleDateString() : 'Date unknown') + '</div>' +
         '</div>' +
         '<div class="video-badge">Loop: ' + loopScore + ' (' + loopGrade + ')</div>' +
+        '<button class="edit-btn" data-id="' + proj.id + '">✏️ Edit</button>' +
         '</div>';
       grid.appendChild(card);
     }
@@ -372,6 +415,59 @@ async function loadLibrary() {
     grid.innerHTML = '<div class="library-status" style="color:#f87171;">Failed to load library. Ensure Flask app is running at localhost:5000</div>';
   }
 }
+
+function showEditForm(id, name, location, duration) {
+  document.getElementById('editProjectId').value = id;
+  document.getElementById('editName').value = name || '';
+  document.getElementById('editLocation').value = location || '';
+  document.getElementById('editDuration').value = duration || '';
+  document.getElementById('editModal').classList.add('active');
+}
+
+function closeEditForm() {
+  document.getElementById('editModal').classList.remove('active');
+}
+
+async function saveProjectEdit() {
+  const id = document.getElementById('editProjectId').value;
+  const name = document.getElementById('editName').value.trim();
+  const location = document.getElementById('editLocation').value.trim();
+  const duration = parseInt(document.getElementById('editDuration').value) || 0;
+
+  if (!name) { alert('Project name is required'); return; }
+
+  try {
+    const res = await fetch('/api/projects/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, location, duration })
+    });
+    if (res.ok) {
+      closeEditForm();
+      loadLibrary();
+    } else {
+      alert('Failed to save project');
+    }
+  } catch (e) {
+    alert('Error saving project: ' + e.message);
+  }
+}
+
+document.getElementById('libraryGrid').addEventListener('click', (e) => {
+  const btn = e.target.closest('button.edit-btn');
+  if (!btn) return;
+  const card = btn.closest('.video-card');
+  const id = btn.dataset.id;
+  const title = card.querySelector('.video-title').textContent;
+  const metaDiv = card.querySelector('.video-meta');
+  const location = metaDiv.textContent.match(/Location: ([^\n]+)/) ? metaDiv.textContent.match(/Location: ([^\n]+)/)[1] : '';
+  const durationMatch = metaDiv.textContent.match(/Duration: (\d+) min/);
+  const duration = durationMatch ? durationMatch[1] : '';
+  showEditForm(id, title, location, duration);
+});
+
+document.getElementById('saveEditBtn').addEventListener('click', saveProjectEdit);
+document.getElementById('cancelEditBtn').addEventListener('click', closeEditForm);
 </script>
 </body>
 </html>
