@@ -98,10 +98,16 @@ export default {
     }
 
     if (url.pathname === "/api/projects" && request.method === "GET") {
-      const { results } = await env.DB.prepare(
-        "SELECT id, name, location, duration, loop_score, loop_grade, file_path, created_at, updated_at FROM projects ORDER BY updated_at DESC LIMIT 100"
-      ).all();
-      return json({ projects: results || [] });
+      try {
+        const { results } = await env.DB.prepare(
+          "SELECT id, name, location, duration, loop_score, loop_grade, file_path, created_at, updated_at FROM projects ORDER BY updated_at DESC LIMIT 100"
+        ).all();
+        return json({ projects: results || [] });
+      } catch (e) {
+        // Projects table may not exist yet or migration hasn't run
+        // Return empty array to show "No projects yet" message
+        return json({ projects: [], note: "Projects table not yet available. Upload videos via localhost:5000 to populate." });
+      }
     }
 
     if (url.pathname === "/health") {
