@@ -1,0 +1,6 @@
+node_modules/
+.wrangler/
+.dev.vars
+*.stackdump
+# catalog exports contain GPS coordinates; regenerate locally, never commit
+migrations/data/

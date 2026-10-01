@@ -15,6 +15,6 @@
     }
   ],
   "routes": [
-    { "pattern": "loopforge.boulderconsultant.com/*", "zone_name": "boulderconsultant.com" }
+    { "pattern": "loopforge.bouldertemplates.com/*", "zone_name": "bouldertemplates.com" }
   ]
 }
