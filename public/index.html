@@ -148,6 +148,8 @@
           <select id="libCameraFilter"><option value="">All cameras</option></select>
           <label for="libSeasonFilter">Season</label>
           <select id="libSeasonFilter"><option value="">All seasons</option></select>
+          <label for="libContentFilter">Content</label>
+          <select id="libContentFilter" title="Auto-detected from sampled frames (heuristic)"><option value="">Any content</option></select>
           <label for="libResFilter">Resolution</label>
           <select id="libResFilter"><option value="">Any</option><option value="4k">4K</option><option value="1080p">1080p or better</option></select>
           <label for="libAudioFilter">Audio</label>
@@ -288,6 +290,7 @@ async function ensureFacets() {
   if (data.totals.no_gps) { const o = document.createElement('option'); o.value = 'no_gps'; o.textContent = 'No GPS (' + data.totals.no_gps.toLocaleString() + ')'; $('libRegionFilter').appendChild(o); }
   fill('libCameraFilter', data.cameras, i => ({ gopro: 'GoPro', dji_drone: 'DJI Drone', unknown: 'Unknown / other' }[i.name] || i.name));
   fill('libSeasonFilter', data.seasons, i => i.name);
+  fill('libContentFilter', data.content || [], i => CONTENT_LABELS[i.name] || i.name);
   $('libScoreFilter').max = data.totals.max_score || 125;
   $('libBlurb').textContent = 'Search ' + data.totals.clips.toLocaleString() + ' clips from the catalog snapshot. Tag, rate, and mark clips ready for export. No processing here.';
   facetData = data;
@@ -413,6 +416,11 @@ $('noteText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.c
 
 /* ---------- library ---------- */
 let libPage = 1, libSeq = 0, clipCache = new Map(), debounceTimer;
+const CONTENT_LABELS = {
+  aspen_creek_likely: 'Aspen + creek (likely)', aspen_water_likely: 'Aspen + water (likely)',
+  aspen_gold_likely: 'Aspen / gold foliage (likely)', fall_color: 'Fall color',
+  creek_likely: 'Creek (likely)', moving_water_likely: 'Moving water (likely)',
+};
 
 function libParams(page) {
   const p = new URLSearchParams();
@@ -421,6 +429,7 @@ function libParams(page) {
   set('region', $('libRegionFilter').value);
   set('camera_source', $('libCameraFilter').value);
   set('season', $('libSeasonFilter').value);
+  set('content', $('libContentFilter').value);
   set('resolution', $('libResFilter').value);
   set('has_audio', $('libAudioFilter').value);
   set('sort', $('libSortFilter').value);
@@ -472,6 +481,7 @@ function cardHtml(c) {
     (c.camera_source && c.camera_source !== 'unknown' ? '<div>' + escapeHtml(c.camera_source) + '</div>' : '') +
     (c.rating ? '<div style="color:var(--amber)">' + '★'.repeat(c.rating) + '</div>' : '') +
     '</div>' +
+    ((c.content_tags || []).length ? '<div>' + c.content_tags.map(t => '<span class="pill" title="Auto-detected">' + escapeHtml(CONTENT_LABELS[t] || t) + '</span>').join('') + '</div>' : '') +
     (c.tags.length ? '<div>' + c.tags.map(t => '<span class="pill">' + escapeHtml(t) + '</span>').join('') + '</div>' : '') +
     '<div class="card-actions"><button class="lib-tag">Tag</button><button class="lib-rate">Rate</button>' +
     '<button class="lib-ready' + (c.ready ? ' on' : '') + '">' + (c.ready ? 'Ready ✓' : 'Ready') + '</button></div></div></div>';
@@ -498,11 +508,11 @@ function buildPager(pages, cur) {
 
 const refilter = () => loadLibrary(1);
 $('libSearchInput').addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(refilter, 300); });
-['libRegionFilter', 'libCameraFilter', 'libSeasonFilter', 'libResFilter', 'libAudioFilter', 'libSortFilter', 'libReadyFilter'].forEach(id => $(id).addEventListener('change', refilter));
+['libRegionFilter', 'libCameraFilter', 'libSeasonFilter', 'libContentFilter', 'libResFilter', 'libAudioFilter', 'libSortFilter', 'libReadyFilter'].forEach(id => $(id).addEventListener('change', refilter));
 $('libScoreFilter').addEventListener('input', (e) => { $('libScoreValue').textContent = e.target.value; clearTimeout(debounceTimer); debounceTimer = setTimeout(refilter, 250); });
 $('libResetFilters').addEventListener('click', () => {
   $('libSearchInput').value = '';
-  ['libRegionFilter', 'libCameraFilter', 'libSeasonFilter', 'libResFilter', 'libAudioFilter'].forEach(id => { $(id).value = ''; });
+  ['libRegionFilter', 'libCameraFilter', 'libSeasonFilter', 'libContentFilter', 'libResFilter', 'libAudioFilter'].forEach(id => { $(id).value = ''; });
   $('libSortFilter').value = 'score'; $('libScoreFilter').value = '0'; $('libScoreValue').textContent = '0'; $('libReadyFilter').checked = false;
   loadLibrary(1);
 });

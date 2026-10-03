@@ -107,6 +107,12 @@ async function browse(url: URL, env: Env): Promise<Response> {
     where.push("date >= ?"); binds.push(since);
   }
 
+  const contentTags = (p.get("content") || "").split(",").map((t) => t.trim()).filter((t) => /^[a-z_]{1,40}$/.test(t)).slice(0, 6);
+  for (const t of contentTags) {
+    where.push(`${CLIP_KEY} IN (SELECT clip_key FROM clip_content WHERE tags LIKE ?)`);
+    binds.push(`%,${t},%`);
+  }
+
   if (p.get("ready") === "1") {
     where.push(
       `(SELECT a.action_type FROM clip_actions a WHERE a.clip_filename = ${CLIP_KEY} AND a.action_type IN ('ready','unready') ORDER BY a.id DESC LIMIT 1) = 'ready'`
@@ -147,6 +153,15 @@ async function browse(url: URL, env: Env): Promise<Response> {
     }
   }
 
+  const content = new Map<string, string[]>();
+  if (rows.length) {
+    const keys = rows.map((r) => r.key as string);
+    const { results } = await env.DB.prepare(
+      `SELECT clip_key, tags FROM clip_content WHERE clip_key IN (${keys.map(() => "?").join(",")})`
+    ).bind(...keys).all<{ clip_key: string; tags: string }>();
+    for (const c of results) content.set(c.clip_key, c.tags.split(",").filter(Boolean));
+  }
+
   const clips = rows.map((r) => {
     const s = state.get(r.key as string);
     let reasons: string[] = [];
@@ -156,6 +171,7 @@ async function browse(url: URL, env: Env): Promise<Response> {
       reasons,
       has_audio: !!r.has_audio,
       tags: s ? [...s.tags] : [],
+      content_tags: content.get(r.key as string) || [],
       rating: s ? s.rating : null,
       ready: s ? s.ready : false,
     };
@@ -166,7 +182,7 @@ async function browse(url: URL, env: Env): Promise<Response> {
 
 async function facets(env: Env): Promise<Response> {
   const width = "CAST(substr(resolution,1,instr(resolution,'x')-1) AS INTEGER)";
-  const [totals, regions, cameras, seasons, towns] = await env.DB.batch([
+  const [totals, regions, cameras, seasons, towns, contentRows] = await env.DB.batch([
     env.DB.prepare(
       `SELECT COUNT(*) AS clips, COALESCE(SUM(duration),0) AS seconds, COALESCE(SUM(size_mb),0) AS size_mb,
               SUM(CASE WHEN resolution LIKE '%x%' AND ${width} >= 3840 THEN 1 ELSE 0 END) AS k4,
@@ -183,8 +199,15 @@ async function facets(env: Env): Promise<Response> {
     env.DB.prepare(
       `SELECT nearest_town AS name, COUNT(*) AS clips FROM clips WHERE hidden = 0 AND nearest_town IS NOT NULL GROUP BY nearest_town ORDER BY clips DESC LIMIT 12`
     ),
+    env.DB.prepare(`SELECT tags FROM clip_content WHERE tags != ','`),
   ]);
+  const contentCounts = new Map<string, number>();
+  for (const r of contentRows.results as { tags: string }[]) {
+    for (const t of r.tags.split(",").filter(Boolean)) contentCounts.set(t, (contentCounts.get(t) || 0) + 1);
+  }
+  const content = [...contentCounts].map(([name, clips]) => ({ name, clips })).sort((a, b) => b.clips - a.clips);
   return json({
+    content,
     totals: totals.results[0],
     regions: regions.results,
     cameras: cameras.results,
